@@ -1,4 +1,7 @@
-import urllib.parse
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 from django.conf import settings
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -8,7 +11,7 @@ from py_zipkin.thrift import zipkin_core
 def wrap_urlopen(func):
 	parsed_host = None
 	if not hasattr(settings, 'ZIPKIN_SERVER'):
-		parsed_host = urllib.parse.urlparse(settings.ZIPKIN_SERVER)
+		parsed_host = urlparse(settings.ZIPKIN_SERVER)
 
 	def urlopen(self, method, url, **kw):
 		if parsed_host and self.host == parsed_host.hostname:
