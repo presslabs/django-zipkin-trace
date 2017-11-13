@@ -5,7 +5,7 @@ except ImportError:
 
 from django.conf import settings
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from py_zipkin.zipkin import zipkin_span, create_http_headers_for_new_span
+from py_zipkin.zipkin import zipkin_client_span, create_http_headers_for_new_span
 from py_zipkin.thrift import zipkin_core
 
 def wrap_urlopen(func):
@@ -24,19 +24,18 @@ def wrap_urlopen(func):
 			zipkin_core.HTTP_PATH: url,
 		}
 
-		with zipkin_span(service_name=self.host, span_name=self._absolute_url(url), binary_annotations=attrs) as span:
-			headers = kw['headers'] or {}
+		with zipkin_client_span(service_name=self.host, span_name=self._absolute_url(url), binary_annotations=attrs) as span:
+			headers = kw.pop('headers', {})
 			headers.update(create_http_headers_for_new_span())
-
-			if 'headers' in kw:
-				del kw['headers']
 
 			try:
 				out = func(self, method, url, headers=headers, **kw)
 
-				if hasattr(out.connection, 'sock'):
+				if hasattr(out.connection, 'sock') and hasattr(out.connection.sock, 'getpeername'):
 					peer = out.connection.sock.getpeername()
 					span.add_sa_binary_annotation(peer[1], self.host, peer[0])
+				else:
+					span.add_sa_binary_annotation(self.port, self.host)
 			except:
 				# always add sa_binary even in case of error
 				# but if we do it before firing urlopen, then we ended up with two annotations
@@ -45,7 +44,7 @@ def wrap_urlopen(func):
 
 			span.update_binary_annotations({
 				zipkin_core.HTTP_STATUS_CODE: out.status,
-				'http.retries': out.retries,
+				'http.retries': out.retries.total,
 			})
 
 		return out
@@ -54,4 +53,3 @@ def wrap_urlopen(func):
 
 def init():
 	HTTPConnectionPool.urlopen = wrap_urlopen(HTTPConnectionPool.urlopen)
-	HTTPSConnectionPool.urlopen = wrap_urlopen(HTTPSConnectionPool.urlopen)
