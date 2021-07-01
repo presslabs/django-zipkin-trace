@@ -11,7 +11,7 @@ setup(
     license="MIT",
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
-    install_requires=["Django", "py_zipkin==0.20.0", "requests-futures==1.0.0",],
+    install_requires=["Django", "py_zipkin==0.20.2", "requests-futures==1.0.0",],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
